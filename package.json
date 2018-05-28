@@ -1,0 +1,22 @@
+{
+  "name": "thecraftbot",
+  "version": "0.1.0",
+  "description": "Bot for TheCraft discord server",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tywele/TheCraft-Discord-Bot.git"
+  },
+  "author": "Tywele",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Tywele/TheCraft-Discord-Bot/issues"
+  },
+  "homepage": "https://github.com/Tywele/TheCraft-Discord-Bot#readme",
+  "dependencies": {
+    "discord.js": "^11.3.2"
+  }
+}
