@@ -1,5 +1,5 @@
 const Discord = require('discord.js');
-const client = new Discord.client();
+const client = new Discord.Client();
 const settings = require('./settings.json');
 
 client.on('ready', () => {
@@ -7,7 +7,7 @@ client.on('ready', () => {
 });
 
 client.on('message', message => {
-    if (message === 'ping') {
+    if (message.content === 'ping') {
         message.reply('pong');
     }
 });
