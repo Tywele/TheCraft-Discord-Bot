@@ -8,29 +8,28 @@ client.on('ready', () => {
 });
 
 // react to messages
-var prefix = '+';
 client.on('message', message => {
     // stop when message has no prefix
-    if (!message.content.startsWith(prefix)) return;
+    if (!message.content.startsWith(settings.prefix)) return;
 
     // get cmd args
-    let args = message.content.split(' ').slice(1);
-    let argresult = args.join(' '); 
+    let args = message.content.slice(settings.prefix.length).trim().split(/ +/g);
+    let command = args.shift().toLowerCase(); 
 
     // stop bot from responding to itself
     if (message.author.bot) return;
 
-    if (message.content.startsWith(prefix + 'ping')) {
+    if (message.content.startsWith(settings.prefix + 'ping')) {
         message.channel.send(`Pong! \`${Date.now() - message.createdTimestamp} ms\``);
     } else 
 
     // set game of bot
-    if (message.content.startsWith(prefix + 'setgame')) {
+    if (message.content.startsWith(settings.prefix + 'setgame')) {
         client.user.setActivity(argresult);
     } else
 
     // send message to different channel
-    if (message.content.startsWith(prefix + 'send')) {
+    if (message.content.startsWith(settings.prefix + 'send')) {
         client.channels.get('140508702284185600').send('Hello from bot-sandbox');
     }
 });
