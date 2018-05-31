@@ -23,7 +23,7 @@ client.on('message', message => {
     if (message.author.bot) return;
 
     // get cmd args
-    let args = message.content.slice(settings.prefix.length).trim().split(';');
+    let args = message.content.slice(settings.prefix.length).trim().split(settings.delimiter);
     let command = args.shift().toLowerCase(); 
 
     for (var i = 0; i < args.length; i++) {
