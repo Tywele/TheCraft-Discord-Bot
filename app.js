@@ -2,22 +2,35 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 const settings = require('./settings.json');
 const snekfetch = require('snekfetch');
-const api = 'https://api.xivdb.com/search?string=';
+const api = 'https://api.xivdb.com/search?string='; // https://github.com/xivdb/api
+const sql = require('sqlite');
 
-// https://github.com/xivdb/api
-// item api => name_de, name_en, name_fr, name_ja
+sql.open('./log.sqlite');
 
 // react to starting the bot
 client.on('ready', () => {
     console.log('I\'m online\nI\'m online');
-    client.user.setActivity('FFXIV Market')
+    client.user.setActivity('FFXIV Market');
+
+    sql.run('CREATE TABLE IF NOT EXISTS users (userId TEXT, name TEXT)');
+    sql.run('CREATE TABLE IF NOT EXISTS requests (item TEXT, amount INTEGER, id TEXT, accepted BOOLEAN)');
+    sql.run('CREATE TABLE IF NOT EXISTS offers (item TEXT, price INTEGER, quality TEXT, id TEXT, sold BOOLEAN)');
+    sql.run('CREATE TABLE IF NOT EXISTS userHasRequests(userId TEXT, requestId TEXT)');
+    sql.run('CREATE TABLE IF NOT EXISTS userHasOffers(userId TEXT, offerId TEXT)');
 });
 
 // react to messages
 client.on('message', message => {
 
     // stop when message has no prefix
-    if (!message.content.startsWith(settings.prefix)) return;
+	if (!message.content.startsWith(settings.prefix)) return;
+	
+	// create user entry in DB
+	sql.get('SELECT * FROM users WHERE userId = ?', [message.author.id]).then(row => {
+		if(!row) {
+			sql.run('INSERT INTO users (userId, name) VALUES (?, ?)', [message.author.id, message.author.username]);
+		}
+	});
 
     // stop bot from responding to itself
     if (message.author.bot) return;
@@ -46,8 +59,8 @@ client.on('message', message => {
         let id;
 
         // stop processing command if not enough arguments
-        if (args.length < 2) {
-            message.channel.send('Info! Requesting an item to be gathered works as follows: \`+request;item;amount\`\nThe name must be provided in English.');
+        if (args.length != 2) {
+            message.channel.send('Info! Requesting an item to be gathered works as follows: \`+request;[item];[amount]\`\nThe name must be provided in English.');
             return;
         }
 
@@ -60,7 +73,7 @@ client.on('message', message => {
         }
 
         // check if second argument is a number
-        if (typeof(parseInt(args[1])) === 'number') {
+        if (!isNaN(args[1])) {
             amount = parseInt(args[1]);
         } else {
             message.channel.send(`Error! Please provide a number`);
@@ -76,20 +89,54 @@ client.on('message', message => {
                 name_en = t.body.name_en;
                 name_ja = t.body.name_ja;
                 name_fr = t.body.name_fr;
-                id = Date.now();
+                id = parseInt(Date.now()).toString();
                 embed = new Discord.RichEmbed()
                     .setDescription(`${name_en}\n${name_de}\n${name_fr}\n${name_ja}\n\nID: \`${id}\`\n\nType \`+accept;[id]\` to accept the request.`)
                     .setTitle(db_url)
                     .setURL(db_url)
                     .setAuthor(`${message.author.username} requests x${amount}`);
 
-                message.channel.send({embed: embed});
+				message.channel.send({embed: embed});
+				
+				// insert to DB
+				sql.run('INSERT INTO requests (item, amount, id, accepted) VALUES (?, ?, ?, ?)', [item, amount, id, 0]);
+				sql.run('INSERT INTO userHasRequests (userId, requestID) VALUES (?, ?)', [message.author.id, id]);
             });
-        });
-    } else
+		});		
+	} else
+	
+	// accept request
+	if (message.content.startsWith(settings.prefix + 'accept')) {
+
+		let id;
+
+		// stop processing command if not enough arguments
+		if (args.length != 1) {
+            message.channel.send('Info! Accepting a request works as follows: \`+accept;[id]\`');
+            return;
+		}
+		
+		// check if first argument is a number
+        if (!isNaN(args[0])) {
+            id = parseInt(args[0]);
+        } else {
+            message.channel.send(`Error! Please provide a number`);
+            return;
+		}
+
+		sql.get(`SELECT * FROM requests WHERE id = ${id}`).then(row => {
+			if (row.accepted == 1) {
+				message.channel.send('This request has already been accepted.');
+				return;
+			}
+			let embed = new Discord.RichEmbed().setDescription(`${message.author.username} accepted the request to gather ${row.item} x${row.amount}`);
+			message.channel.send({embed: embed});
+		});
+		sql.run(`UPDATE requests SET accepted = 1 WHERE id = ${id}`);
+	} else
 
     // post an item for sale
-    if (message.content.startsWith(settings.prefix + 'sell')) {
+    if (message.content.startsWith(settings.prefix + 'offer')) {
         let item;
         let quality;
         let name_de;
@@ -98,9 +145,11 @@ client.on('message', message => {
         let name_ja;
         let price;
         let id;
+        let embed;
 
-        if (args.length < 3) {
-            message.channel.send('Info! Posting an item for sale works as follows: \`+sell;item;price;quality\`\nThe must be provided in English.');
+		// stop processing command if not enough arguments
+        if (args.length != 3) {
+            message.channel.send('Info! Posting an item for sale works as follows: \`+offer;[item];[price];[quality]\`\nThe must be provided in English.');
             return;
         }
 
@@ -111,7 +160,7 @@ client.on('message', message => {
             return;
         }
 
-        if (typeof(parseInt(args[1])) === 'number') {
+        if (!isNaN(args[1])) {
             price = parseInt(args[1]);
         } else {
             message.channel.send('Error! Please provide a number');
@@ -119,12 +168,14 @@ client.on('message', message => {
         }
 
         if (args[2].toLowerCase() == 'nq' || args[2].toLowerCase() == 'hq') {
-            quality = args[2];
+			quality = args[2];
+			quality = quality.toUpperCase();
         } else {
             message.channel.send('Error! Quality must be either \`NQ\` or \`HQ\`');
             return;
         }
 
+		// call api.xivdb.com
         snekfetch.get(api + item + '&one=items').then(r => {
             let url = r.body.items.results[0].url_api;
             let db_url = r.body.items.results[0].url_xivdb;
@@ -133,18 +184,83 @@ client.on('message', message => {
                 name_en = t.body.name_en;
                 name_ja = t.body.name_ja;
                 name_fr = t.body.name_fr;
-                id = Date.now();
+                id = parseInt(Date.now()).toString();
                 embed = new Discord.RichEmbed()
                     .setDescription(`${name_en}\n${name_de}\n${name_fr}\n${name_ja}\n\nID: \`${id}\`\n\nType \`+buy;[id]\` to buy the item.`)
                     .setTitle(db_url)
                     .setURL(db_url)
                     .setAuthor(`${message.author.username} sells below item for ${price} Gil`);
 
-                message.channel.send({embed: embed});
+				message.channel.send({embed: embed});
+				
+				// insert to DB
+				sql.run('INSERT INTO offers (item, price, quality, id, sold) VALUES (?, ?, ?, ?, ?)', [item, price, quality, id, 0]);
+				sql.run('INSERT INTO userHasOffers (userId, offerID) VALUES (?, ?)', [message.author.id, id]);
             });
         });
+	} else
+	
+	// accept offer
+	if (message.content.startsWith(settings.prefix + 'buy')) {
 
-        console.log(`${item} ${price} ${quality}`);
+		let id;
+
+		// stop processing command if not enough arguments
+		if (args.length != 1) {
+            message.channel.send('Info! Accepting an offer works as follows: \`+buy;[id]\`');
+            return;
+		}
+		
+		// check if first argument is a number
+        if (!isNaN(args[0])) {
+            id = parseInt(args[0]);
+        } else {
+            message.channel.send(`Error! Please provide a number`);
+            return;
+		}
+
+		sql.get(`SELECT * FROM offers WHERE id = ${id}`).then(row => {
+			if (row.sold == 1) {
+				message.channel.send('This offer has already been bought.');
+				return;
+			}
+			let embed = new Discord.RichEmbed().setDescription(`${message.author.username} wants to buy ${row.item} in ${row.quality} for ${row.price} Gil`);
+			message.channel.send({embed: embed});
+		});
+		sql.run(`UPDATE offers SET sold = 1 WHERE id = ${id}`);
+	} else
+
+    // list all requests or sale offers
+    if (message.content.startsWith(settings.prefix + 'list')) {
+        let embed;
+		let requestlist = `\`\`\`Open Requests\n\nName\t\t\t\t\t\t\tAmount\t\t\t\tID\n\n`;
+		let offerlist = `\`\`\`Open Offers\n\nName\t\t\t\t\t\t\tQuality\t\tPrice\t\t\t\tID\n\n`;
+
+		// stop processing command if not enough arguments
+        if (args.length != 1) {
+            message.channel.send('Info! Getting a list of requests or sale offers works as follows: \`+list;requests\` or \`+list;offers\`');
+            return;
+        }
+
+        if (args[0] === 'requests') {
+            sql.each('SELECT * FROM requests WHERE accepted = 0', (err, row) => {
+                if (!err) requestlist += `${row.item}\t\t\t\t\t\t\tx${row.amount}\t\t\t\t\t${row.id}\n`;
+            }).then(t => {
+				requestlist += `\`\`\``;
+            	message.channel.send(requestlist);
+			});
+			
+		}
+		
+		if (args[0] === 'offers') {
+            sql.each('SELECT * FROM offers WHERE sold = 0', (err, row) => {
+                if (!err) offerlist += `${row.item}\t\t\t\t\t\t\t${row.quality}\t\t${row.price} Gil\t\t\t\t${row.id}\n`;
+            }).then(t => {
+				offerlist += `\`\`\``;
+            	message.channel.send(offerlist);
+			});
+			
+        }
     }
 });
 

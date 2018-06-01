@@ -18,6 +18,7 @@
   "homepage": "https://github.com/Tywele/TheCraft-Discord-Bot#readme",
   "dependencies": {
     "discord.js": "^11.3.2",
-    "snekfetch": "^4.0.0"
+    "snekfetch": "^4.0.0",
+    "sqlite": "^2.9.2"
   }
 }
