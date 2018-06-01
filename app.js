@@ -43,10 +43,11 @@ client.on('message', message => {
         let name_ja;
         let name_fr;
         let embed;
+        let id;
 
         // stop processing command if not enough arguments
         if (args.length < 2) {
-            message.channel.send('Info! Requesting an item to be gathered works as follows: \`+request;item;amount\`\nThe name must be provided in English');
+            message.channel.send('Info! Requesting an item to be gathered works as follows: \`+request;item;amount\`\nThe name must be provided in English.');
             return;
         }
 
@@ -75,8 +76,9 @@ client.on('message', message => {
                 name_en = t.body.name_en;
                 name_ja = t.body.name_ja;
                 name_fr = t.body.name_fr;
+                id = Date.now();
                 embed = new Discord.RichEmbed()
-                    .setDescription(`${name_en}\n${name_de}\n${name_fr}\n${name_ja}\n\nID: \`${Date.now()}\`\n\nType \`+accept;[id]\` to accept the request`)
+                    .setDescription(`${name_en}\n${name_de}\n${name_fr}\n${name_ja}\n\nID: \`${id}\`\n\nType \`+accept;[id]\` to accept the request.`)
                     .setTitle(db_url)
                     .setURL(db_url)
                     .setAuthor(`${message.author.username} requests x${amount}`);
@@ -84,6 +86,65 @@ client.on('message', message => {
                 message.channel.send({embed: embed});
             });
         });
+    } else
+
+    // post an item for sale
+    if (message.content.startsWith(settings.prefix + 'sell')) {
+        let item;
+        let quality;
+        let name_de;
+        let name_en;
+        let name_fr;
+        let name_ja;
+        let price;
+        let id;
+
+        if (args.length < 3) {
+            message.channel.send('Info! Posting an item for sale works as follows: \`+sell;item;price;quality\`\nThe must be provided in English.');
+            return;
+        }
+
+        if (typeof(args[0]) === 'string') {
+            item = args[0];
+        } else {
+            message.channel.send(`Error! Please provide an item name`);
+            return;
+        }
+
+        if (typeof(parseInt(args[1])) === 'number') {
+            price = parseInt(args[1]);
+        } else {
+            message.channel.send('Error! Please provide a number');
+            return;
+        }
+
+        if (args[2].toLowerCase() == 'nq' || args[2].toLowerCase() == 'hq') {
+            quality = args[2];
+        } else {
+            message.channel.send('Error! Quality must be either \`NQ\` or \`HQ\`');
+            return;
+        }
+
+        snekfetch.get(api + item + '&one=items').then(r => {
+            let url = r.body.items.results[0].url_api;
+            let db_url = r.body.items.results[0].url_xivdb;
+            snekfetch.get(url).then(t => {
+                name_de = t.body.name_de;
+                name_en = t.body.name_en;
+                name_ja = t.body.name_ja;
+                name_fr = t.body.name_fr;
+                id = Date.now();
+                embed = new Discord.RichEmbed()
+                    .setDescription(`${name_en}\n${name_de}\n${name_fr}\n${name_ja}\n\nID: \`${id}\`\n\nType \`+buy;[id]\` to buy the item.`)
+                    .setTitle(db_url)
+                    .setURL(db_url)
+                    .setAuthor(`${message.author.username} sells below item for ${price} Gil`);
+
+                message.channel.send({embed: embed});
+            });
+        });
+
+        console.log(`${item} ${price} ${quality}`);
     }
 });
 
