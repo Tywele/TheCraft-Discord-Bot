@@ -8,7 +8,7 @@ npm install
 ```
 in the root directory.
 
-Create `settings.json` in the root directory and add the following information in it:
+Create `settings.json` in the root directory and add the following information to it:
 
 ```
 {
