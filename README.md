@@ -17,3 +17,5 @@ Create `settings.json` in the root directory and add the following information t
   "delimiter": "your delimiter to split command arguments goes here"
 }
 ```
+
+See https://anidiotsguide_old.gitbooks.io/discord-js-bot-guide/content/other-guides/hosting-on-glitchcom.html for information on how to host a discord bot on glitch.com for free.
