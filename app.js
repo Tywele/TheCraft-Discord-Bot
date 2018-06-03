@@ -294,8 +294,8 @@ client.on('message', message => {
                         }
 
                         if (args[0] === 'requests') {
-                            sql.each('SELECT * FROM requests WHERE accepted = 0', (err, row) => {
-                                if (!err) list += `\`${row.id}\` \`x${row.amount}\` \`${row.item}\`\n`;
+                            sql.each('SELECT * FROM requests, users, userHasRequests WHERE accepted = 0 AND users.userId = userHasRequests.userId AND userHasRequests.requestId = requests.id', (err, row) => {
+                                if (!err) list += `\`${row.id}\` \`x${row.amount}\` \`${row.item}\` \`by ${row.name}\`\n`;
                             }).then(t => {
                                 if (list !== "") message.channel.send(list);
                                 else message.channel.send('No requests are currently listed');
@@ -303,8 +303,8 @@ client.on('message', message => {
                         }
 
                         if (args[0] === 'offers') {
-                            sql.each('SELECT * FROM offers WHERE sold = 0', (err, row) => {
-                                if (!err) list += `\`${row.id}\` \`${row.quality}\` \`${row.price}\` Gil \`${row.item}\`\n`;
+                            sql.each('SELECT * FROM offers, users, userHasOffers WHERE sold = 0 AND users.userId = userHasOffers.userId AND userHasOffers.offerId = offers.id', (err, row) => {
+                                if (!err) list += `\`${row.id}\` \`${row.quality}\` \`${row.price} Gil\` \`${row.item}\` \`by ${row.name}\`\n`;
                             }).then(t => {
                                 if (list !== "") message.channel.send(list);
                                 else message.channel.send('No offers are currently listed');
