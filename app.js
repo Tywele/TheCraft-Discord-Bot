@@ -5,6 +5,7 @@ const snekfetch = require('snekfetch');
 const api = 'https://api.xivdb.com/search?string='; // https://github.com/xivdb/api
 const sql = require('sqlite');
 
+// open sqlite file
 sql.open('./log.sqlite');
 
 // react to starting the bot
@@ -24,16 +25,16 @@ client.on('message', message => {
 
     // stop when message has no prefix
 	if (!message.content.startsWith(settings.prefix)) return;
-	
-	// create user entry in DB
+
+    // stop bot from responding to itself
+    if (message.author.bot) return;
+
+    // create user entry in DB
 	sql.get('SELECT * FROM users WHERE userId = ?', [message.author.id]).then(row => {
 		if(!row) {
 			sql.run('INSERT INTO users (userId, name) VALUES (?, ?)', [message.author.id, message.author.username]);
 		}
 	});
-
-    // stop bot from responding to itself
-    if (message.author.bot) return;
 
     // get cmd args
     let args = message.content.slice(settings.prefix.length).trim().split(settings.delimiter);
@@ -232,9 +233,7 @@ client.on('message', message => {
 
     // list all requests or sale offers
     if (message.content.startsWith(settings.prefix + 'list')) {
-        let embed;
-		let requestlist = `\`\`\`Open Requests\n\nName\t\t\t\t\t\t\tAmount\t\t\t\tID\n\n`;
-		let offerlist = `\`\`\`Open Offers\n\nName\t\t\t\t\t\t\tQuality\t\tPrice\t\t\t\tID\n\n`;
+		let list = ``;
 
 		// stop processing command if not enough arguments
         if (args.length != 1) {
@@ -244,23 +243,54 @@ client.on('message', message => {
 
         if (args[0] === 'requests') {
             sql.each('SELECT * FROM requests WHERE accepted = 0', (err, row) => {
-                if (!err) requestlist += `${row.item}\t\t\t\t\t\t\tx${row.amount}\t\t\t\t\t${row.id}\n`;
+                if (!err) list += `\`${row.id}\` \`x${row.amount}\` \`${row.item}\`\n`;
             }).then(t => {
-				requestlist += `\`\`\``;
-            	message.channel.send(requestlist);
+                if (list !== "") message.channel.send(list);
+                else message.channel.send('No requests are currently listed');
 			});
-			
 		}
 		
 		if (args[0] === 'offers') {
             sql.each('SELECT * FROM offers WHERE sold = 0', (err, row) => {
-                if (!err) offerlist += `${row.item}\t\t\t\t\t\t\t${row.quality}\t\t${row.price} Gil\t\t\t\t${row.id}\n`;
+                if (!err) list += `\`${row.id}\` \`${row.quality}\` \`${row.price}\` Gil \`${row.item}\`\n`;
             }).then(t => {
-				offerlist += `\`\`\``;
-            	message.channel.send(offerlist);
+                if (list !== "") message.channel.send(list);
+                else message.channel.send('No offers are currently listed');
 			});
-			
         }
+    }
+
+    // help command
+    if (message.content.startsWith(settings.prefix + 'help')) {
+        message.channel.send({embed: {
+            "title": "Available Commands",
+            "fields": [
+                {
+                    "name": "+request;[item];[count]",
+                    "value": "Use this command if you need items gathered from someone.\nThe item name has to be provided in English so that the automatic search will work."
+                },
+                {
+                    "name": "+accept;[id]",
+                    "value": "Use this command to accept a posted request."
+                },
+                {
+                    "name": "+offer;[item];[price];[quality]",
+                    "value": "Use this command to offer an item for sale.\nThe item name has to be provided in English so that the automatic search will work.\nQuality has to be provided as either NQ or HQ."
+                },
+                {
+                    "name": "+buy;[id]",
+                    "value": "Use this command if you want to buy an item from a posted offer."
+                },
+                {
+                    "name": "+list;[requests|offers]",
+                    "value": "Use this command to either list all available requests or offers."
+                },
+                {
+                    "name": "Github",
+                    "value": "https://github.com/Tywele/TheCraft-Discord-Bot"
+                }
+            ]
+        }});
     }
 });
 
