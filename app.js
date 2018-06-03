@@ -204,19 +204,41 @@ client.on('message', message => {
 
                 // call api.xivdb.com
                 snekfetch.get(api + item + '&one=items').then(r => {
-                    let url = r.body.items.results[0].url_api;
-                    let db_url = r.body.items.results[0].url_xivdb;
-                    snekfetch.get(url).then(t => {
-                        name_de = t.body.name_de;
-                        name_en = t.body.name_en;
-                        name_ja = t.body.name_ja;
-                        name_fr = t.body.name_fr;
+                    let url;
+                    let db_url;
+                    if (r.body.items.results.length <= 0) url = "";
+                    else {
+                        url = r.body.items.results[0].url_api;
+                        db_url = r.body.items.results[0].url_xivdb;
+                    }
+                    if (url !== "") {
+                        snekfetch.get(url).then(t => {
+                            name_de = t.body.name_de;
+                            name_en = t.body.name_en;
+                            name_ja = t.body.name_ja;
+                            name_fr = t.body.name_fr;
+                            id = parseInt(Date.now()).toString();
+                            embed = new Discord.RichEmbed()
+                                .setDescription(`${name_en}\n${name_de}\n${name_fr}\n${name_ja}\n\nID: \`${id}\`\n\nType \`+buy;[id]\` to buy the item.`)
+                                .setTitle(db_url)
+                                .setURL(db_url)
+                                .setAuthor(`${message.author.username} sells below item for ${price} Gil`);
+
+                            message.channel.send({
+                                embed: embed
+                            });
+
+                            // insert to DB
+                            sql.run('INSERT INTO offers (item, price, quality, id, sold) VALUES (?, ?, ?, ?, ?)', [item, price, quality, id, 0]);
+                            sql.run('INSERT INTO userHasOffers (userId, offerID) VALUES (?, ?)', [message.author.id, id]);
+                        });
+                    } else {
                         id = parseInt(Date.now()).toString();
                         embed = new Discord.RichEmbed()
-                            .setDescription(`${name_en}\n${name_de}\n${name_fr}\n${name_ja}\n\nID: \`${id}\`\n\nType \`+buy;[id]\` to buy the item.`)
+                            .setDescription(`No item with the provided name found\n\nID: \`${id}\`\n\nType \`+buy;[id]\` to buy the item.`)
                             .setTitle(db_url)
                             .setURL(db_url)
-                            .setAuthor(`${message.author.username} sells below item for ${price} Gil`);
+                            .setAuthor(`${message.author.username} sells ${item} for ${price} Gil`);
 
                         message.channel.send({
                             embed: embed
@@ -225,7 +247,7 @@ client.on('message', message => {
                         // insert to DB
                         sql.run('INSERT INTO offers (item, price, quality, id, sold) VALUES (?, ?, ?, ?, ?)', [item, price, quality, id, 0]);
                         sql.run('INSERT INTO userHasOffers (userId, offerID) VALUES (?, ?)', [message.author.id, id]);
-                    });
+                    }
                 });
             } else
 
