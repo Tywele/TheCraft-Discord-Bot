@@ -348,4 +348,4 @@ client.on('message', message => {
 });
 
 // login the bot
-client.login(Process.env.TOKEN);
+client.login(process.env.TOKEN);
