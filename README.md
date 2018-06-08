@@ -12,10 +12,9 @@ Create `settings.json` in the root directory and add the following information t
 
 ```
 {
-  "token": "your discord API bot token goes here",
   "prefix": "your preferred prefix for the commands goes here",
   "delimiter": "your delimiter to split command arguments goes here"
 }
 ```
 
-See https://anidiotsguide_old.gitbooks.io/discord-js-bot-guide/content/other-guides/hosting-on-glitchcom.html for information on how to host a discord bot on glitch.com for free.
+See https://www.youtube.com/watch?v=NM8IMyqpvqU for information on how to host a discord bot on heroku.com for free.
